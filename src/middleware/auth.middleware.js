@@ -1,9 +1,10 @@
+// middleware/auth.middleware.js
 import User from "../models/User.js";
 import admin from "../config/firebase.js";
 
 export const authMiddleware = async (req, res, next) => {
   try {
-    //  token extract
+    // Extract token
     const token = req.headers.authorization?.split(" ")[1];
 
     if (!token) {
@@ -13,29 +14,24 @@ export const authMiddleware = async (req, res, next) => {
       });
     }
 
-    // verify Firebase token
+    // Verify Firebase token
     const decoded = await admin.auth().verifyIdToken(token);
 
-    // check user in MongoDB
-    let user = await User.findOne({ firebaseUID: decoded.uid });
+    // Find user in MongoDB (don't auto-create)
+    const user = await User.findOne({ firebaseUID: decoded.uid });
 
-    //  if user not exist → create user
     if (!user) {
-      user = await User.create({
-        firebaseUID: decoded.uid,
-        email: decoded.email,
-        name: decoded.name || req.body?.name || "New User",
-        role: "user",
+      return res.status(401).json({
+        success: false,
+        message: "User not found. Please register first.",
       });
     }
 
-    //  attach user to request
+    // Attach user to request
     req.user = user;
-
     next();
   } catch (error) {
     console.log("Auth Error:", error.message);
-
     return res.status(401).json({
       success: false,
       message: "Invalid or expired token",

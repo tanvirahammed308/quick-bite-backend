@@ -1,5 +1,33 @@
+import admin from "../config/firebase.js";
 import User from "../models/User.js";
 
+// Create User
+export const register = async (req, res) => {
+  try {
+    const { token, name } = req.body;
+    
+    if (!token) {
+      return res.status(400).json({ success: false, message: "Token required" });
+    }
+    
+    const decoded = await admin.auth().verifyIdToken(token);
+    
+    let user = await User.findOne({ firebaseUID: decoded.uid });
+    
+    if (!user) {
+      user = await User.create({
+        firebaseUID: decoded.uid,
+        email: decoded.email,
+        name: name || decoded.name || decoded.email?.split('@')[0] || "User",
+        role: "user",
+      });
+    }
+    
+    res.status(200).json({ success: true, user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 //  Get Logged-in User Profile
 
